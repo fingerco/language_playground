@@ -1,0 +1,17 @@
+name: crystal_test
+version: 0.1.0
+
+authors:
+  - Cory Finger <cory.j.finger@gmail.com>
+
+targets:
+  crystal_test:
+    main: src/crystal_test.cr
+
+dependencies:
+  cltk:
+    github: ziprandom/cltk
+
+crystal: 1.3.2
+
+license: MIT
