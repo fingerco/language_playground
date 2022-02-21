@@ -25,3 +25,7 @@ TODO: Write development instructions here
 ## Contributors
 
 - [Cory Finger](https://github.com/your-github-user) - creator and maintainer
+
+```
+LLVM_CONFIG=/opt/homebrew/Cellar/llvm/13.0.1/bin/llvm-config crystal src/parser.cr
+```

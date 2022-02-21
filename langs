@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+
+export LLVM_CONFIG="${LLVM_CONFIG:-/opt/homebrew/Cellar/llvm/13.0.1/bin/llvm-config}"
+
+TRY_MESSAGE="Try 'build [language] [script]'"
+
+if [ $1 == "build" ]; then
+  if [ -z "$2" ] || [ -z "$3" ]; then
+    echo $TRY_MESSAGE
+    exit 1;
+  fi
+
+  export DSL_LANG=$2
+  export OUTPUT_FILE="${4:-dist/$(basename -- $3 | sed 's/\(.*\)\..*/\1/')}"
+  crystal src/parser.cr $3 $OUTPUT_FILE && \
+  echo "Output program to '$OUTPUT_FILE'"
+
+elif [ $1 == "precompiler" ]; then
+  if [ -z "$2" ]; then
+    echo $TRY_MESSAGE
+    exit 1;
+  fi
+
+  export DSL_LANG=$2
+  crystal src/precompiler.cr
+
+elif [ -z "$1" ]; then
+  echo $TRY_MESSAGE
+  exit 1;
+
+else
+  echo "Command '$1' does not exist! $TRY_MESSAGE"
+  exit 1;
+
+fi

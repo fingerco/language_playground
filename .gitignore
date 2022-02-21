@@ -2,4 +2,6 @@
 /lib/
 /bin/
 /.shards/
+/dist/
+!/dist/.keep
 *.dwarf

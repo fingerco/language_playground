@@ -1,4 +1,8 @@
+name = ask_for_info "Name"
 wait_on_request :slash_command
+
+cory = Stakeholder.new
+stakeholders = [] of Stakeholder
 
 work_request_form = basic_form do
   select_input  :work_type do
