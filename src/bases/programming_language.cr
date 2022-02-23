@@ -28,7 +28,7 @@ module ProgrammingLanguage
 
   module Parser
     class Grammar(ST, N)
-      @nodes = Hash(ST, N).new
+      property nodes = Hash(ST, N).new
 
       def add_node(name : ST, node : N)
         @nodes[name] = node
