@@ -64,7 +64,7 @@ describe Lexer do
       lex_parse(content).tokens.should eq(tokens)
     end
 
-    it "correctly parses a basic function", focus: true do
+    it "correctly parses a basic function" do
       #https://www2.cs.sfu.ca/CourseCentral/310/pwfong/Lisp/1/tutorial1.html
       content = <<-CONTENTS
       ;;; testing.lisp
