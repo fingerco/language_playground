@@ -3,5 +3,5 @@ require "./lexer"
 require "./parser"
 
 module Languages::Lisp
-  include ProgrammingLanguage
+  include ProgrammingLanguage::Language
 end

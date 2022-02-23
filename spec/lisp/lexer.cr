@@ -1,5 +1,5 @@
 require "spec"
-require "../../src/langs/lisp"
+require "../../src/langs/lisp/lexer"
 
 alias Lexer = Languages::Lisp::Lexer
 alias Token = Lexer::Token
