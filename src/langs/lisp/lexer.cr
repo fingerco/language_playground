@@ -7,12 +7,14 @@ module Languages::Lisp
     property produce_token : Proc(Token, Nil) = (->(token : Token) { })
 
     @token_regex = {
-      symbol: /[^\s\(\)\"']/,
+      symbol: /[^\s\(\)\"';]/,
       expr_start: /\(/,
       expr_end: /\)/,
       str_double: /\"/,
       str_single: /\'/,
-      whitespace: /[\s]/
+      whitespace: /[\s]/,
+      newline: /(\r|\n)/,
+      comment: /;/
     }
 
     enum TokenType
@@ -24,6 +26,7 @@ module Languages::Lisp
       SymbolNumber
       SymbolBoolean
       SymbolGeneric
+      Comment
     end
 
     def parse_character(c)
@@ -39,6 +42,8 @@ module Languages::Lisp
           shift_from!(State::Neutral, State::DoubleStringStart)
         when @token_regex[:str_single]
           shift_from!(State::Neutral, State::SingleStringStart)
+        when @token_regex[:comment]
+          shift_from!(State::Neutral, State::Comment)
         else
           false
         end
@@ -47,6 +52,8 @@ module Languages::Lisp
         case c.to_s
         when @token_regex[:symbol]
           shift_from!(State::ExpressionStart, State::AnySymbol)
+        when @token_regex[:comment]
+          shift_from!(State::ExpressionBrace, State::Comment)
         when @token_regex[:str_double]
           invalid_shift!(State::DoubleStringStart)
         when @token_regex[:str_single]
@@ -74,6 +81,8 @@ module Languages::Lisp
             shift_from!(State::AnySymbol, State::Whitespace)
           when @token_regex[:expr_end]
             shift_from!(State::AnySymbol, State::ExpressionEnd)
+          when @token_regex[:comment]
+            shift_from!(State::AnySymbol, State::Comment)
           when @token_regex[:expr_start]
             invalid_shift!(State::ExpressionStart)
           when @token_regex[:str_double]
@@ -83,6 +92,14 @@ module Languages::Lisp
           else
             false
           end
+
+        elsif @state =~ State::Comment
+            case c.to_s
+            when @token_regex[:newline]
+              shift_from!(State::Comment, State::Whitespace)
+            else
+              false
+            end
 
       else
         raise LexerUnhandledState.new("State: #{@state} - Memory: #{@memory}")
@@ -110,6 +127,9 @@ module Languages::Lisp
         @memory.push(cause_char)
         should_reset_memory = true
         yield_token(Token.new(TokenType::StringSingle, @memory.join("")))
+
+      elsif @state =~ State::Comment
+        yield_token(Token.new(TokenType::Comment, @memory.join("")))
 
       elsif @state =~ State::DoubleStringStart
         # Do nothing
@@ -187,6 +207,7 @@ module Languages::Lisp
       ExpressionEnd
       AnySymbol
       Whitespace
+      Comment
       FileEnded
 
       def =~(other : State)

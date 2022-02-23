@@ -2,6 +2,16 @@ require "spec"
 require "../../src/langs/lisp"
 
 alias Lexer = Languages::Lisp::Lexer
+alias Token = Lexer::Token
+alias TokenType = Lexer::TokenType
+ExpressionStart = TokenType::ExpressionStart
+ExpressionEnd = TokenType::ExpressionEnd
+Whitespace = TokenType::Whitespace
+SymbolNumber = TokenType::SymbolNumber
+SymbolGeneric = TokenType::SymbolGeneric
+StringDouble = TokenType::StringDouble
+StringSingle = TokenType::StringSingle
+Comment = TokenType::Comment
 
 def lex_parse(contents)
   lex = Lexer.new
@@ -16,17 +26,42 @@ end
 describe Lexer do
   describe "end-to-end" do
     it "correctly parses a basic function" do
+      content = <<-CONTENTS
+      (+ 1 2)
+      CONTENTS
+
       tokens = [
-        Lexer::Token.new(Lexer::TokenType::ExpressionStart, "("),
-        Lexer::Token.new(Lexer::TokenType::SymbolGeneric,   "+"),
-        Lexer::Token.new(Lexer::TokenType::Whitespace,      " "),
-        Lexer::Token.new(Lexer::TokenType::SymbolNumber,    "1"),
-        Lexer::Token.new(Lexer::TokenType::Whitespace,      " "),
-        Lexer::Token.new(Lexer::TokenType::SymbolNumber,    "2"),
-        Lexer::Token.new(Lexer::TokenType::ExpressionEnd,   ")"),
+        Token.new(ExpressionStart, "("),
+        Token.new(SymbolGeneric,   "+"),
+        Token.new(Whitespace,      " "),
+        Token.new(SymbolNumber,    "1"),
+        Token.new(Whitespace,      " "),
+        Token.new(SymbolNumber,    "2"),
+        Token.new(ExpressionEnd,   ")"),
       ] of Lexer::Token
 
-      lex_parse("(+ 1 2)").tokens.should eq(tokens)
+      lex_parse(content).tokens.should eq(tokens)
+    end
+
+    it "correctly parses a basic function" do
+      content = <<-CONTENTS
+      ; This is a comment
+      (+ 1 2)
+      CONTENTS
+
+      tokens = [
+        Token.new(Comment, "; This is a comment"),
+        Token.new(Whitespace, "\n"),
+        Token.new(ExpressionStart, "("),
+        Token.new(SymbolGeneric,   "+"),
+        Token.new(Whitespace,      " "),
+        Token.new(SymbolNumber,    "1"),
+        Token.new(Whitespace,      " "),
+        Token.new(SymbolNumber,    "2"),
+        Token.new(ExpressionEnd,   ")"),
+      ] of Lexer::Token
+
+      lex_parse(content).tokens.should eq(tokens)
     end
   end
 
