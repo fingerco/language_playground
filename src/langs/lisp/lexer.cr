@@ -3,6 +3,7 @@ module Languages::Lisp
     @state : State = State::Neutral
     @memory : Array(Char) = Array(Char).new
     @curr_char : Char? = nil
+    @location = {1, 0}
     property tokens : Array(Token) = Array(Token).new
     property produce_token : Proc(Token, Nil) = (->(token : Token) { })
 
@@ -31,48 +32,57 @@ module Languages::Lisp
 
     def parse_character(c)
       @curr_char = c
+      curr_state = @state
 
-      did_shift = if @state =~ State::Neutral
+      # Fall through to Neutral if we stop seeing whitespace
+      if curr_state =~ State::Whitespace && !@token_regex[:whitespace].match(c.to_s)
+        shift_from!(State::Whitespace, State::Nothing)
+      end
+
+      if @state =~ State::Neutral
         case c.to_s
         when @token_regex[:symbol]
           shift_from!(State::Neutral, State::AnySymbol)
         when @token_regex[:expr_start]
           shift_from!(State::Neutral, State::ExpressionStart)
+        when @token_regex[:expr_end]
+          shift_from!(State::Neutral, State::ExpressionEnd)
         when @token_regex[:str_double]
           shift_from!(State::Neutral, State::DoubleStringStart)
         when @token_regex[:str_single]
           shift_from!(State::Neutral, State::SingleStringStart)
         when @token_regex[:comment]
           shift_from!(State::Neutral, State::Comment)
+        when @token_regex[:whitespace]
+          shift_from!(State::Neutral, State::Whitespace)
         else
-          false
+          skipping_shift
         end
 
-      elsif @state =~ State::ExpressionBrace
+      elsif @state =~ State::ExpressionStart
         case c.to_s
         when @token_regex[:symbol]
           shift_from!(State::ExpressionStart, State::AnySymbol)
-        when @token_regex[:comment]
-          shift_from!(State::ExpressionBrace, State::Comment)
         when @token_regex[:str_double]
           invalid_shift!(State::DoubleStringStart)
         when @token_regex[:str_single]
           invalid_shift!(State::SingleStringStart)
         when @token_regex[:expr_end]
-          shift_from(State::ExpressionStart, State::ExpressionEnd) ||
-          invalid_shift!(State::ExpressionEnd)
+          shift_from!(State::ExpressionStart, State::ExpressionEnd)
+        when @token_regex[:whitespace]
+          shift_from!(State::ExpressionStart, State::Whitespace)
         else
-          false
+          unexpected_char!(c)
         end
 
-      elsif @state =~ State::AnyString
+      elsif @state =~ State::StringStart
         case c.to_s
         when @token_regex[:str_double]
-          shift_from(State::DoubleStringStart, State::DoubleStringEnd)
+          shift_from!(State::DoubleStringStart, State::DoubleStringEnd)
         when @token_regex[:str_single]
-          shift_from(State::SingleStringStart, State::SingleStringEnd)
+          shift_from!(State::SingleStringStart, State::SingleStringEnd)
         else
-          false
+          skipping_shift
         end
 
       elsif @state =~ State::AnySymbol
@@ -90,7 +100,7 @@ module Languages::Lisp
           when @token_regex[:str_single]
             invalid_shift!(State::SingleStringStart)
           else
-            false
+            skipping_shift
           end
 
         elsif @state =~ State::Comment
@@ -98,44 +108,56 @@ module Languages::Lisp
             when @token_regex[:newline]
               shift_from!(State::Comment, State::Whitespace)
             else
-              false
+              skipping_shift
             end
 
+        elsif @state =~ State::Whitespace
+          case c.to_s
+          when @token_regex[:whitespace]
+            skipping_shift
+          else
+            invalid_shift!(State::Neutral)
+          end
+
       else
-        raise LexerUnhandledState.new("State: #{@state} - Memory: #{@memory}")
+        raise LexerUnhandledState.new("#{@state} - Memory: #{@memory} (location #{@location[0]}:#{@location[1]})")
       end
 
-      if !did_shift
-        @memory.push(@curr_char.not_nil!)
+      if c == '\n'
+        @location = {@location[0] + 1, 1}
+      else
+        @location = {@location[0], @location[1] + 1}
       end
+    end
+
+    private def skipping_shift
+      @memory.push(@curr_char.not_nil!)
+      false
     end
 
     def end_file
       set_state(State::FileEnded)
+      @location = {1, 1}
     end
 
     private def set_state(new_state : State)
-      cause_char = @curr_char.not_nil!
-
-      should_reset_memory = true
+      do_next = [:reset_memory, :push_char] of Symbol
       if @state =~ State::DoubleStringEnd
-        @memory.push(cause_char)
-        should_reset_memory = true
+        do_next = [:reset_memory]
         yield_token(Token.new(TokenType::StringDouble, @memory.join("")))
 
       elsif @state =~ State::SingleStringEnd
-        @memory.push(cause_char)
-        should_reset_memory = true
+        do_next = [:reset_memory]
         yield_token(Token.new(TokenType::StringSingle, @memory.join("")))
 
       elsif @state =~ State::Comment
         yield_token(Token.new(TokenType::Comment, @memory.join("")))
 
       elsif @state =~ State::DoubleStringStart
-        # Do nothing
+        do_next = [:push_char]
 
       elsif @state =~ State::DoubleStringStart
-        # Do nothing
+        do_next = [:push_char]
 
       elsif @state =~ State::ExpressionStart
         yield_token(Token.new(TokenType::ExpressionStart, @memory.join("")))
@@ -158,18 +180,25 @@ module Languages::Lisp
         end
 
         yield_token(Token.new(symbol_type, symbol_val))
+
+      elsif @state =~ State::Nothing
+        do_next = [:reset_memory, :push_char]
+
       elsif new_state =~ State::FileEnded
+        do_next = [:reset_memory]
 
       elsif @memory.size > 0
-        raise LexerUnhandledState.new("State: #{@state} - Memory: #{@memory}")
+        raise LexerUnhandledState.new("#{@state} - Memory: #{@memory} (location #{@location[0]}:#{@location[1]})")
 
       end
 
       @state = new_state
-      if should_reset_memory
+      if do_next.includes?(:reset_memory)
         @memory = Array(Char).new
-      else
-        @memory.push(cause_char)
+      end
+
+      if do_next.includes?(:push_char)
+        @memory.push(@curr_char.not_nil!)
       end
 
       true
@@ -181,12 +210,16 @@ module Languages::Lisp
 
     private def shift_from!(curr_state : State, new_state : State)
       unless shift_from(curr_state, new_state)
-        raise LexerInvalidStateChange.new("#{curr_state} to #{new_state} when actual state is #{@state}")
+        raise LexerInvalidStateChange.new("#{curr_state} to #{new_state} when actual state is #{@state} (location #{@location[0]}:#{@location[1]})")
       end
     end
 
     private def invalid_shift!(new_state)
-      raise LexerInvalidStateChange.new("#{@state} to #{new_state}")
+      raise LexerInvalidStateChange.new("#{@state} to #{new_state} (location #{@location[0]}:#{@location[1]})")
+    end
+
+    private def unexpected_char!(c : Char | Nil)
+      raise LexerUnexpectedCharacter.new("'#{c}' (location #{@location[0]}:#{@location[1]})")
     end
 
     private def yield_token(token : Token)
@@ -196,13 +229,13 @@ module Languages::Lisp
 
     enum State
       Any
+      Nothing
       Neutral
       SingleStringStart
       SingleStringEnd
       DoubleStringStart
       DoubleStringEnd
-      AnyString
-      ExpressionBrace
+      StringStart
       ExpressionStart
       ExpressionEnd
       AnySymbol
@@ -217,18 +250,18 @@ module Languages::Lisp
         elsif other === State::Any
           true
 
-        elsif other === State::ExpressionBrace
-          [State::ExpressionStart, State::ExpressionEnd].includes?(self)
-
         elsif other === State::Neutral
-          [State::Whitespace].includes?(self)
+          [
+            State::Nothing,
+            State::DoubleStringEnd,
+            State::SingleStringEnd,
+            State::ExpressionEnd
+          ].includes?(self)
 
-        elsif other === State::AnyString
+        elsif other === State::StringStart
           [
             State::DoubleStringStart,
-            State::SingleStringStart,
-            State::DoubleStringEnd,
-            State::SingleStringEnd
+            State::SingleStringStart
           ].includes?(self)
 
         else

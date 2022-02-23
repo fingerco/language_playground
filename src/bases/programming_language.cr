@@ -14,4 +14,10 @@ module ProgrammingLanguage
       "Lexer - Unhandled state: #{@message}"
     end
   end
+
+  class LexerUnexpectedCharacter < Exception
+    def message
+      "Lexer - Unexpected Character: #{@message}"
+    end
+  end
 end
