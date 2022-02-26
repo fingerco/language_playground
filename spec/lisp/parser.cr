@@ -22,7 +22,7 @@ describe Parser do
       ])
     end
 
-    it "correctly parses a basic function" do
+    it "correctly parses basic strings" do
       lex("(+ \"Apples are cool - Aren't they?\" \"Tasty!\")").should eq([
         LexMatch.new("ExprStart",       "("),
         LexMatch.new("SymbolGeneric",   "+"),
