@@ -22,6 +22,14 @@ class Languages::Lisp::Parser < ProgrammingLanguage::Parser
 
   add_lex_step :fold, ["Whitespace", "SymbolGeneric"]
 
+  add_lex_step :translate, "SymbolGeneric", (Proc(String, String).new do |content|
+    case content
+    when /^[0-9]+$/         then "SymbolNumber"
+    when /^(true|false)%/   then "SymbolBoolean"
+    else "SymbolGeneric"
+    end
+  end)
+
   # lex_step :fold, ["Whitespace", "SymbolGeneric"]
   # lex_step :crunch, (<<-CRUNCH)
   #   {String} -> {StringDouble} {CONTENTS} {StringDouble}

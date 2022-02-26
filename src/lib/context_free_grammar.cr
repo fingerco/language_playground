@@ -41,4 +41,15 @@ class ContextFreeGrammar
       matches
     end
   end
+
+  def_lex_step :translate do |match_name, translate_proc|
+    Proc(Array(LexMatch), LexMatch, Array(LexMatch)).new do |matches, match|
+      if match_name === match.name
+        new_name = translate_proc.call(match.contents) || match.name
+        matches + [LexMatch.new(new_name, match.contents)]
+      else
+        matches + [match]
+      end
+    end
+  end
 end
