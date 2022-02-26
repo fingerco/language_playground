@@ -20,7 +20,15 @@ class Languages::Lisp::Parser < ProgrammingLanguage::Parser
     {SymbolGeneric} -> {ANYTHING}
     LEXICON
 
-  add_lex_step :fold, ["Whitespace", "SymbolGeneric"]
+  add_lex_step :fold, <<-FOLD
+    {Whitespace}    <- {Whitespace} {Whitespace}
+    {SymbolGeneric} <- {SymbolGeneric} {SymbolGeneric}
+    FOLD
+
+  add_lex_step :crunch!, <<-CRUNCH
+    {String} <- {StringDouble} _ {StringDouble}
+    {String} <- {StringSingle} _ {StringSingle}
+    CRUNCH
 
   add_lex_step :translate, "SymbolGeneric", (Proc(String, String).new do |content|
     case content
@@ -29,9 +37,6 @@ class Languages::Lisp::Parser < ProgrammingLanguage::Parser
     else "SymbolGeneric"
     end
   end)
-
-  add_lex_step :crunch!, "String", "StringDouble", "StringDouble"
-  add_lex_step :crunch!, "String", "StringSingle", "StringSingle"
 
   grammar (<<-GRAMMAR)
     {Expr} -> {ExprStart} {SymbolAny} {ExprEnd}

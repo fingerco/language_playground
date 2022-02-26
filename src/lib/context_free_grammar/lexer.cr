@@ -78,6 +78,13 @@ class ContextFreeGrammar
       end
     end
 
+    class LexStepProcs
+      property start_proc : Proc(Array(LexMatch), Array(LexMatch))?
+      property map_proc : Proc(LexMatch, LexMatch)?
+      property reduce_proc : Proc(Array(LexMatch), LexMatch, Array(LexMatch))?
+      property end_proc : Proc(Array(LexMatch), Array(LexMatch))?
+    end
+
     module Macros
       LEX_MAPPING_REGEX = /{(.+?)}[\s]+->[\s]+(.+)/
       alias LexMatch = ContextFreeGrammar::Lexer::LexMatch
@@ -104,15 +111,12 @@ class ContextFreeGrammar
         end
 
         def self.lex_step_{{name.id}}(lex, *block_args)
-          resp = self.lex_step_block_{{name.id}}(*block_args)
+          procs = self.lex_step_block_{{name.id}}(*block_args)
 
-          if resp.is_a?(Proc)
-            lex = lex.reduce([] of LexMatch, &resp)
-          elsif resp.is_a?(Tuple)
-            lex = lex.reduce([] of LexMatch, &resp[0])
-            lex = resp[1].call(lex)
-          end
-
+          lex = procs.start_proc.not_nil!.call(lex) if procs.start_proc
+          lex = lex.map(&procs.map_proc.not_nil!) if procs.map_proc
+          lex = lex.reduce([] of LexMatch, &procs.reduce_proc.not_nil!) if procs.reduce_proc
+          lex = procs.end_proc.not_nil!.call(lex) if procs.end_proc
           lex
         end
       end

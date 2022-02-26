@@ -33,5 +33,17 @@ describe Parser do
         LexMatch.new("ExprEnd",         ")")
       ])
     end
+
+    it "correctly parses interlaced strings" do
+      lex("(+ \'Apples are cool - Aren\"t they?\' \"Tasty!\")").should eq([
+        LexMatch.new("ExprStart",       "("),
+        LexMatch.new("SymbolGeneric",   "+"),
+        LexMatch.new("Whitespace",      " "),
+        LexMatch.new("String",          "\'Apples are cool - Aren\"t they?\'"),
+        LexMatch.new("Whitespace",      " "),
+        LexMatch.new("String",          "\"Tasty!\""),
+        LexMatch.new("ExprEnd",         ")")
+      ])
+    end
   end
 end
