@@ -115,7 +115,6 @@ class ContextFreeGrammar
 
     step_procs = LexStepProcs.new
     step_procs.start_proc = Proc(Array(LexMatch), Array(LexMatch)).new do |matches|
-      puts matches
       matches
     end
 

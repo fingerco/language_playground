@@ -86,17 +86,17 @@ class ContextFreeGrammar
     end
 
     module Macros
-      LEX_MAPPING_REGEX = /{(.+?)}[\s]+->[\s]+(.+)/
+      LEX_MAPPING_REGEX = /{(.+?)}[\s]+<-[\s]+(.+)/
       alias LexMatch = ContextFreeGrammar::Lexer::LexMatch
       alias Lexicon = ContextFreeGrammar::Lexer::Lexicon
       @@lexicon : Lexicon = Lexicon.new
 
-      macro lexicon(lex_def)
+      macro lex_grammar(lex_def)
         lines = {{lex_def}}.lines.map{|l| l.strip}.select{|l| l.size > 0}
         lines.each do |line|
           match = LEX_MAPPING_REGEX.match(line)
           unless match
-            raise "Lexicon -> Does not match regex: #{line}"
+            raise "Lexicon - Does not match regex: #{line}"
           end
 
           lex_name = match[1]

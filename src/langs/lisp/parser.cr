@@ -9,15 +9,15 @@ class Languages::Lisp::Parser < ProgrammingLanguage::Parser
     @@lexicon.transform(@contents)
   end
 
-  lexicon (<<-LEXICON)
-    {StringDouble}  -> "
-    {StringSingle}  -> '
+  lex_grammar (<<-LEXICON)
+    {StringDouble}  <- "
+    {StringSingle}  <- '
 
-    {Whitespace}    -> {WHITESPACE}
-    {ExprStart}     -> (
-    {ExprEnd}       -> )
+    {Whitespace}    <- {WHITESPACE}
+    {ExprStart}     <- (
+    {ExprEnd}       <- )
 
-    {SymbolGeneric} -> {ANYTHING}
+    {SymbolGeneric} <- {ANYTHING}
     LEXICON
 
   add_lex_step :fold, <<-FOLD
@@ -26,8 +26,8 @@ class Languages::Lisp::Parser < ProgrammingLanguage::Parser
     FOLD
 
   add_lex_step :crunch!, <<-CRUNCH
-    {String} <- {StringDouble} _ {StringDouble}
-    {String} <- {StringSingle} _ {StringSingle}
+    {String}        <- {StringDouble} _ {StringDouble}
+    {String}        <- {StringSingle} _ {StringSingle}
     CRUNCH
 
   add_lex_step :translate, "SymbolGeneric", (Proc(String, String).new do |content|
