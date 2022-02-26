@@ -30,6 +30,9 @@ class Languages::Lisp::Parser < ProgrammingLanguage::Parser
     end
   end)
 
+  add_lex_step :crunch!, "String", "StringDouble", "StringDouble"
+  add_lex_step :crunch!, "String", "StringSingle", "StringSingle"
+
   # lex_step :fold, ["Whitespace", "SymbolGeneric"]
   # lex_step :crunch, (<<-CRUNCH)
   #   {String} -> {StringDouble} {CONTENTS} {StringDouble}

@@ -52,4 +52,24 @@ class ContextFreeGrammar
       end
     end
   end
+
+  def_lex_step :crunch! do |new_name, start_name, end_name|
+    curr_crunched : LexMatch? = nil
+
+    Proc(Array(LexMatch), LexMatch, Array(LexMatch)).new do |matches, match|
+      if !curr_crunched && start_name === match.name
+        curr_crunched = LexMatch.new(new_name, match.contents)
+        matches + [curr_crunched.not_nil!]
+      elsif curr_crunched && end_name === match.name
+        curr_crunched.not_nil!.contents += match.contents
+        curr_crunched = nil
+        matches
+      elsif curr_crunched
+        curr_crunched.not_nil!.contents += match.contents
+        matches
+      else
+        matches + [match]
+      end
+    end
+  end
 end
