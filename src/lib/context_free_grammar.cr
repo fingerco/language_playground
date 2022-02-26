@@ -46,7 +46,7 @@ class ContextFreeGrammar
     Proc(Array(LexMatch), LexMatch, Array(LexMatch)).new do |matches, match|
       if match_name === match.name
         new_name = translate_proc.call(match.contents) || match.name
-        matches + [LexMatch.new(new_name, match.contents)]
+        matches + [LexMatch.new(new_name, match.contents, match.location)]
       else
         matches + [match]
       end
@@ -56,20 +56,35 @@ class ContextFreeGrammar
   def_lex_step :crunch! do |new_name, start_name, end_name|
     curr_crunched : LexMatch? = nil
 
-    Proc(Array(LexMatch), LexMatch, Array(LexMatch)).new do |matches, match|
+    reduce_proc = Proc(Array(LexMatch), LexMatch, Array(LexMatch)).new do |matches, match|
       if !curr_crunched && start_name === match.name
-        curr_crunched = LexMatch.new(new_name, match.contents)
+        curr_crunched = LexMatch.new(new_name, match.contents, match.location)
         matches + [curr_crunched.not_nil!]
+
       elsif curr_crunched && end_name === match.name
         curr_crunched.not_nil!.contents += match.contents
         curr_crunched = nil
         matches
+
       elsif curr_crunched
         curr_crunched.not_nil!.contents += match.contents
         matches
+
       else
         matches + [match]
       end
     end
+
+    end_proc = Proc(Array(LexMatch), Array(LexMatch)).new do |matches|
+      if curr_crunched
+        loc = "#{curr_crunched.not_nil!.location[0]}:#{curr_crunched.not_nil!.location[1]}"
+        raise "No end '#{end_name}' for :crunch!(#{new_name}, #{start_name}, #{end_name}) at #{loc}"
+      end
+
+      matches
+    end
+
+    {reduce_proc, end_proc}
   end
+
 end

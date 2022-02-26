@@ -19,16 +19,24 @@ class ContextFreeGrammar
 
       def transform(str : String) : Array(LexMatch)
         all_matches = [] of LexMatch
+        line_no : UInt32 = 1
+        col_no : UInt32 = 0
         str.each_char do |c|
+          col_no += 1
           match = nil
           @matchers.each do |name, val|
             if !match && val === c.to_s
-              match = LexMatch.new(name, c.to_s)
+              match = LexMatch.new(name, c.to_s, {line_no, col_no})
             end
           end
 
           unless match
             raise "Lexer - Unmatched Character: '#{c}'"
+          end
+
+          if c == '\n'
+            line_no += 1
+            col_no = 0
           end
 
           all_matches.push(match)
@@ -45,14 +53,16 @@ class ContextFreeGrammar
     class LexMatch
       property name : String
       property contents : String
+      property location : Tuple(UInt32, UInt32)
 
-      def initialize(name, contents)
+      def initialize(name, contents, location = {0_u32, 0_u32})
         @name = name
         @contents = contents
+        @location = location
       end
 
       def combine(other : LexMatch)
-        LexMatch.new(@name, @contents + other.contents)
+        LexMatch.new(@name, @contents + other.contents, @location)
       end
 
       def ==(other : LexMatch)
@@ -94,8 +104,16 @@ class ContextFreeGrammar
         end
 
         def self.lex_step_{{name.id}}(lex, *block_args)
-          reduce_proc = self.lex_step_block_{{name.id}}(*block_args)
-          lex.reduce([] of LexMatch, &reduce_proc)
+          resp = self.lex_step_block_{{name.id}}(*block_args)
+
+          if resp.is_a?(Proc)
+            lex = lex.reduce([] of LexMatch, &resp)
+          elsif resp.is_a?(Tuple)
+            lex = lex.reduce([] of LexMatch, &resp[0])
+            lex = resp[1].call(lex)
+          end
+
+          lex
         end
       end
 
