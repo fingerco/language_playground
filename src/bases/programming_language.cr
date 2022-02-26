@@ -1,3 +1,4 @@
+require "../lib/context_free_grammar"
 module ProgrammingLanguage
 
   module Language
@@ -26,14 +27,14 @@ module ProgrammingLanguage
     end
   end
 
-  module Parser
-    class Grammar(ST, N)
-      property nodes = Hash(ST, N).new
+  abstract class Parser < ContextFreeGrammar
+    @contents : String = ""
 
-      def add_node(name : ST, node : N)
-        @nodes[name] = node
-      end
-
+    def initialize(contents : String) : Parser
+      @contents = contents
+      self
     end
+
+    abstract def lex
   end
 end

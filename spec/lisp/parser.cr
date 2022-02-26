@@ -2,15 +2,24 @@ require "spec"
 require "../../src/langs/lisp/parser"
 
 alias Parser = Languages::Lisp::Parser
+alias LexMatch = Parser::LexMatch
 
-def parse(contents)
-  Parser.new(contents).parse
+def lex(contents)
+  Parser.new(contents).lex
 end
 
 describe Parser do
-  describe "end-to-end" do
+  describe "#lex" do
     it "correctly parses a basic function" do
-      parse("(+ 1 2)").should eq(nil)
+      lex("(+ 1 2)").should eq([
+        LexMatch.new("ExprStart", "("),
+        LexMatch.new("SymbolGeneric", "+"),
+        LexMatch.new("Whitespace", " "),
+        LexMatch.new("SymbolGeneric", "1"),
+        LexMatch.new("Whitespace", " "),
+        LexMatch.new("SymbolGeneric", "2"),
+        LexMatch.new("ExprEnd", ")")
+      ])
     end
   end
 end
